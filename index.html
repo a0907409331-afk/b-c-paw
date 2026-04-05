@@ -1,191 +1,242 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>BPC AI 預測系統</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>百家樂預測機器人（PWA Matrix）</title>
 
-<style>
-:root{
-  --bg:#0B1E3C;
-  --accent:#00c3ff;
-  --banker:#ff4d4f;
-  --player:#00c3ff;
-  --gold:#ffcc00;
-}
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#001100">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-body{
-  margin:0;
-  font-family:"Microsoft JhengHei";
-  background: radial-gradient(circle at top, #12263f, #0B1E3C 70%);
-  color:#fff;
-}
-
-.container{
-  max-width:900px;
-  margin:auto;
-  padding:20px;
-}
-
-.glass{
-  backdrop-filter: blur(12px);
-  background: rgba(255,255,255,0.05);
-  border:1px solid rgba(255,255,255,0.08);
-  box-shadow:0 8px 30px rgba(0,0,0,0.4);
-  border-radius:12px;
-  padding:15px;
-}
-
-/* 輸入區 */
-.input-area{
-  display:flex;
-  gap:10px;
-  margin-bottom:10px;
-}
-input{
-  flex:1;
-  padding:14px;
-  border-radius:10px;
-  border:none;
-  background:#0f2a4a;
-  color:#fff;
-  font-size:18px;
-  text-align:center;
-}
-button{
-  padding:14px 20px;
-  border:none;
-  border-radius:10px;
-  background:var(--accent);
-  color:#fff;
-  cursor:pointer;
-}
-small{color:#aaa;}
-
-/* 進度條 */
-.progress{
-  position:relative;
-  height:35px;
-  border-radius:10px;
-  overflow:hidden;
-  margin:15px 0;
-}
-.progress div{
-  height:100%;
-  width:0%;
-  background:linear-gradient(90deg,var(--accent),var(--gold));
-  transition:width .1s;
-}
-#percent{
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  color:#fff;
-  font-weight:700;
-}
-
-/* 結果卡片 */
-.result{
-  display:flex;
-  gap:10px;
-  margin-top:15px;
-}
-.card{
-  flex:1;
-  padding:20px;
-  text-align:center;
-  font-weight:700;
-  font-size:18px;
-}
-
-/* 建議卡片 */
-.suggest-card{
-  margin-top:20px;
-  padding:20px;
-  border-radius:12px;
-  text-align:center;
-  font-weight:900;
-  font-size:22px;
-  display:none;
-}
-.suggest-card.player{background:#003366;color:var(--player);}
-.suggest-card.banker{background:#330000;color:var(--banker);}
-</style>
+  <style>
+    :root{
+      --bg:#001100; --matrix-green:#00ff66; --panel:#07120a; --accent:#00cc66;
+      --user-bubble:#0f2b10; --bot-bubble:#07120a; --text:#e6ffe6;
+    }
+    html,body{height:100%;margin:0;font-family:"Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text);}
+    /* Matrix rain background */
+    body::before{
+      content:"";
+      position:fixed;inset:0;z-index:0;
+      background:linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.85));
+    }
+    canvas#matrix{position:fixed;inset:0;z-index:0;display:block;}
+    header{position:relative;z-index:2;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);color:var(--matrix-green);padding:12px 16px;font-weight:700;text-align:center;border-bottom:1px solid rgba(0,255,102,0.06);}
+    #app{position:relative;z-index:2;display:flex;flex-direction:column;height:calc(100vh - 56px);}
+    #chat{flex:1;padding:12px;overflow:auto;display:flex;flex-direction:column;gap:10px;}
+    .msg{max-width:78%;padding:12px;border-radius:12px;font-size:14px;line-height:1.4;box-shadow:0 6px 18px rgba(0,0,0,0.6);}
+    .user{align-self:flex-end;background:linear-gradient(180deg,#0b3b1a,#083116);color:#eaffea;border:1px solid rgba(0,255,102,0.06);}
+    .bot{align-self:flex-start;background:linear-gradient(180deg,#07120a,#041007);color:#dfffe6;border:1px solid rgba(0,255,102,0.04);}
+    .card{white-space:pre-wrap;font-family:inherit;}
+    #input-area{display:flex;padding:10px;background:rgba(0,0,0,0.35);gap:8px;align-items:center;border-top:1px solid rgba(0,255,102,0.03);}
+    #msg{flex:1;padding:10px;border-radius:20px;border:1px solid rgba(0,255,102,0.06);background:rgba(0,0,0,0.45);color:var(--text);font-size:15px;}
+    button{padding:10px 14px;border-radius:18px;border:none;background:var(--accent);color:#001100;cursor:pointer;font-weight:600;}
+    .menu{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:8px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(0,255,102,0.03);}
+    .menu button{background:transparent;color:var(--matrix-green);border:1px solid rgba(0,255,102,0.08);padding:8px 12px;border-radius:8px;}
+    .toolbar{display:flex;gap:8px;padding:8px;justify-content:center;color:#9fd9a8;font-size:13px;}
+    footer{font-size:12px;color:#7fbf8f;text-align:center;padding:8px;}
+    .muted{color:#7fbf8f;font-size:13px;}
+    .kbd{display:inline-block;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,0.45);border:1px solid rgba(0,255,102,0.04);font-family:monospace;color:var(--matrix-green);}
+  </style>
 </head>
-
 <body>
-<div class="container">
+  <canvas id="matrix"></canvas>
+  <header>百家樂預測機器人（PWA Matrix）</header>
 
-<div class="glass">
-  🤖 AI：輸入6位數（前3閒，後3莊）<br>
-  例：123456 → 閒123 莊456
-</div>
+  <div id="app">
+    <div id="chat" aria-live="polite"></div>
 
-<div class="input-area">
-  <input id="cards" maxlength="6" placeholder="輸入6位數"/>
-  <button onclick="run()">開始預測</button>
-</div>
-<small>前3位閒，後3位莊</small>
+    <div class="toolbar">
+      <span class="muted">提示：先輸入序號驗證（範例：DEMO-AAA-001），驗證後輸入 6 碼（例如 <span class="kbd">AQ8690</span>）。</span>
+    </div>
 
-<div class="glass progress">
-  <div id="bar"></div>
-  <span id="percent">0%</span>
-</div>
+    <div class="menu" id="main-menu">
+      <button id="btn-prev">上一步</button>
+      <button id="btn-reset">重置</button>
+      <button id="btn-stats">統計</button>
+      <button id="btn-help">使用說明</button>
+    </div>
 
-<div id="progressText">等待輸入…</div>
+    <div id="input-area">
+      <input id="msg" placeholder="輸入序號或 6 碼（例如 AQ8690）" autocomplete="off">
+      <button id="send">送出</button>
+    </div>
 
-<div class="result">
-  <div class="glass card" id="b">莊家 —</div>
-  <div class="glass card" id="p">閒家 —</div>
-</div>
+    <footer>離線可用 · 本機儲存預測紀錄</footer>
+  </div>
 
-<div id="suggest" class="suggest-card"></div>
+  <script>
+  /* Matrix rain effect */
+  (function matrixRain(){
+    const canvas = document.getElementById('matrix');
+    const ctx = canvas.getContext('2d');
+    function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+    window.addEventListener('resize', resize);
+    resize();
+    const cols = Math.floor(canvas.width / 14);
+    const drops = Array(cols).fill(0).map(()=>Math.random()*canvas.height);
+    function draw(){
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#00ff66';
+      ctx.font = '12px monospace';
+      for(let i=0;i<cols;i++){
+        const text = String.fromCharCode(0x30A0 + Math.random()*96);
+        ctx.fillText(text, i*14, drops[i]*14);
+        if(drops[i]*14 > canvas.height && Math.random() > 0.975) drops[i]=0;
+        drops[i] += 0.6 + Math.random()*0.8;
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
 
-</div>
-
-<script>
-function run(){
-  const input=document.getElementById("cards").value;
-  if(input.length!==6){
-    document.getElementById("progressText").innerText="⚠️ 請輸入正確的6位數！";
-    return;
+  /* PWA service worker registration */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
   }
 
-  let bar=document.getElementById("bar");
-  let percent=document.getElementById("percent");
-  let text=document.getElementById("progressText");
-  let progress=0;
+  /* Core logic (client-side) */
+  const CP_VALUES = {'A':-5,'2':-4,'3':-3,'4':-2,'5':1,'6':2,'7':3,'8':4,'9':5,'T':0,'J':0,'Q':0,'K':0,'0':0};
+  const POINT_VALUES = {'A':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'0':0,'T':0,'J':0,'Q':0,'K':0};
+  const AP_WEIGHTS = {0:0.5,1:0.4,2:0.3,3:0.3,4:0.1,5:0.2,6:0.3,7:0.3,8:0.5,9:0.1};
+  const ALLOWED = new Set("A23456789TJQK0".split(''));
+  const LS_KEYS = { LICENSES:'bpc_licenses', PREDICTIONS:'bpc_predictions', STATS:'bpc_stats' };
 
-  let timer=setInterval(()=>{
-    progress+=5;
-    if(progress>=100){
-      clearInterval(timer);
-      progress=100;
-      text.innerText="演算完成";
+  const chatEl = document.getElementById('chat');
+  const inputEl = document.getElementById('msg');
+  const sendBtn = document.getElementById('send');
+  const btnPrev = document.getElementById('btn-prev');
+  const btnReset = document.getElementById('btn-reset');
+  const btnStats = document.getElementById('btn-stats');
+  const btnHelp = document.getElementById('btn-help');
 
-      // 模擬結果
-      let bPct=(Math.random()*50+25).toFixed(1);
-      let pPct=(100-bPct).toFixed(1);
+  function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){return d;} }
+  function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 
-      document.getElementById("b").innerText="莊 "+bPct+"%";
-      document.getElementById("p").innerText="閒 "+pPct+"%";
+  if(!lsGet(LS_KEYS.LICENSES, null)){
+    lsSet(LS_KEYS.LICENSES, [{serial:'DEMO-AAA-001', expiry:'2099-12-31 23:59', status:'active', user:null}]);
+  }
+  if(!lsGet(LS_KEYS.PREDICTIONS, null)) lsSet(LS_KEYS.PREDICTIONS, []);
+  if(!lsGet(LS_KEYS.STATS, null)) lsSet(LS_KEYS.STATS, {win:0,lose:0,draw:0});
 
-      let sugBox=document.getElementById("suggest");
-      if(parseFloat(pPct)>parseFloat(bPct)){
-        sugBox.className="suggest-card player";
-        sugBox.innerHTML=`👉 建議下注：Player<br>信心值：${pPct}%`;
-      }else{
-        sugBox.className="suggest-card banker";
-        sugBox.innerHTML=`👉 建議下注：Banker<br>信心值：${bPct}%`;
-      }
-      sugBox.style.display="block";
+  let session = { verified:false, awaiting_serial:true, awaiting_seq:false, last_pred:null };
+
+  function appendBot(text){ const d=document.createElement('div'); d.className='msg bot card'; d.innerText=text; chatEl.appendChild(d); chatEl.scrollTop=chatEl.scrollHeight; }
+  function appendUser(text){ const d=document.createElement('div'); d.className='msg user'; d.innerText=text; chatEl.appendChild(d); chatEl.scrollTop=chatEl.scrollHeight; }
+
+  appendBot("歡迎，請先輸入序號驗證或直接輸入 6 碼牌面（若已驗證）。");
+
+  function normalize_input(raw){ let s=(raw||'').toUpperCase().trim(); s=s.replace(/10/g,'T'); return [...s].filter(ch=>/[A-Z0-9]/.test(ch)).join(''); }
+  function baccarat_total(cards){ return [...cards].reduce((a,c)=>a+(POINT_VALUES[c]||0),0)%10; }
+  function calc_cp_value(six){ return [...six].reduce((a,c)=>a+(CP_VALUES[c]||0),0); }
+  function predict_by_cp_ap(six){
+    const p = six.slice(0,3), b = six.slice(3,6);
+    const cp = calc_cp_value(six);
+    const p_pts = baccarat_total(p), b_pts = baccarat_total(b);
+    const p_ap = AP_WEIGHTS[p_pts]||0, b_ap = AP_WEIGHTS[b_pts]||0;
+    const p_adv = cp * p_ap, b_adv = cp * b_ap;
+    let bet='觀望', bet_side='N';
+    if(p_adv > b_adv){ bet='投注閒家'; bet_side='P'; }
+    else if(p_adv < b_adv){ bet='投注莊家'; bet_side='B'; }
+    return { p_cards:p, b_cards:b, cp, p_pts, b_pts, p_ap, b_ap, p_adv, b_adv, bet, bet_side };
+  }
+  function compute_confidence_pct(adv_p, adv_b, min_threshold=0.02, scale=0.5){
+    const diff = Math.abs(adv_p-adv_b);
+    if(diff <= min_threshold) return Math.round(10 + (diff/(min_threshold+1e-9))*10);
+    const raw = 1.0 - Math.exp(-diff/Math.max(scale,1e-9));
+    return Math.max(10, Math.round(Math.min(100, raw*100)));
+  }
+
+  function validate_serial_frontend(serial){
+    const list = lsGet(LS_KEYS.LICENSES, []);
+    const s = (serial||'').trim();
+    const row = list.find(r=>r.serial.toUpperCase()===s.toUpperCase());
+    if(!row) return {ok:false,msg:'序號錯誤或不存在'};
+    if(row.status!=='active') return {ok:false,msg:'序號已停用'};
+    return {ok:true,row};
+  }
+
+  async function handleInput(raw){
+    const text=(raw||'').trim(); if(!text) return;
+    appendUser(text);
+    const cmd=text.toLowerCase();
+    if(cmd==='/reset' || cmd==='reset'){ doReset(); return; }
+    if(cmd==='/stats' || cmd==='stats'){ showStats(); return; }
+    if(cmd==='/help' || cmd==='help'){ showHelp(); return; }
+
+    if(!session.verified){
+      const v = validate_serial_frontend(text);
+      if(!v.ok){ appendBot('🚫 '+v.msg); return; }
+      session.verified=true; session.awaiting_serial=false; session.awaiting_seq=true;
+      appendBot('🔓 序號驗證成功，請輸入 6 碼牌面（例如：AQ8690）。');
+      return;
     }
-    bar.style.width=progress+"%";
-    percent.innerText=Math.floor(progress)+"%";
-  },50);
-}
-</script>
 
+    const normalized = normalize_input(text);
+    if(normalized.length < 6){ appendBot('請輸入 6 碼（前三閒、後三莊），例如：AQ8690'); return; }
+    const six = normalized.slice(0,6);
+    if(![...six].every(ch=>ALLOWED.has(ch))){ appendBot('輸入含非法字元，僅允許 A 2-9 T J Q K 0'); return; }
+
+    await runPredictionFlow(six);
+  }
+
+  async function runPredictionFlow(six){
+    const progressMsg = document.createElement('div'); progressMsg.className='msg bot card';
+    progressMsg.innerText = "🔐    AI加密演算中\n━━━━━━━━━\n[演算模組] 0%  [ap模組] 0%  [bp模組] 0%";
+    chatEl.appendChild(progressMsg); chatEl.scrollTop = chatEl.scrollHeight;
+
+    await sleep(400);
+    progressMsg.innerText = "🔐    AI加密演算中\n━━━━━━━━━\n[演算模組] 30% → 60%  [ap模組] 20% → 50%  [bp模組] 10% → 40%";
+    await sleep(500);
+    progressMsg.innerText = "🔐    AI加密演算中\n━━━━━━━━━\n[演算模組] 60% → 90%  [ap模組] 60% → 90%  [bp模組] 50% → 90%";
+    await sleep(500);
+    progressMsg.innerText = "🔐    AI加密演算中\n━━━━━━━━━\n[演算模組] 100% ✔  [ap模組] 100% ✔  [bp模組] 100% ✔";
+    await sleep(300);
+
+    const adv = predict_by_cp_ap(six);
+    const confidence = compute_confidence_pct(adv.p_adv, adv.b_adv, 0.02, 0.5);
+    const conclusion = adv.bet_side==='P'?'閒':(adv.bet_side==='B'?'莊':'觀望');
+    const ts = new Date().toLocaleString();
+
+    const finalText =
+`🕹️ 演算結果
+閒 ${adv.p_cards}   ｜   莊 ${adv.b_cards}
+cp：閒 ${adv.cp} ｜   莊 ${adv.cp}
+ap：閒 ${adv.p_ap.toFixed(2)} ｜  莊 ${adv.b_ap.toFixed(2)}
+🔵 ${adv.p_adv.toFixed(3)}   🔴 ${adv.b_adv.toFixed(3)}
+
+📝 已記錄分析
+🕒 記錄時間：${ts}
+━━━━━━━━━
+下局預測：${conclusion} ${conclusion==='閒'?'🔵':conclusion==='莊'?'🔴':''}
+穩定： ${confidence>=70?'📈':confidence<=30?'📉':'📊'} ｜ 信心：${confidence}%`;
+
+    progressMsg.innerText = finalText;
+
+    const rec = { ts:new Date().toISOString(), seq:six, cp_player:adv.cp, cp_banker:adv.cp, pPts:adv.p_pts, bPts:adv.b_pts, ap_player:adv.p_ap, ap_banker:adv.b_ap, adv_player:adv.p_adv, adv_banker:adv.b_adv, prediction:adv.bet_side, confidence };
+    const preds = lsGet(LS_KEYS.PREDICTIONS, []); preds.push(rec); lsSet(LS_KEYS.PREDICTIONS, preds);
+    const stats = lsGet(LS_KEYS.STATS, {win:0,lose:0,draw:0});
+    if(session.last_pred){ if(rec.prediction === session.last_pred) stats.win += 1; else if(rec.prediction === 'N') stats.draw += 1; else stats.lose += 1; }
+    session.last_pred = rec.prediction; lsSet(LS_KEYS.STATS, stats);
+  }
+
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+  function showStats(){ const s=lsGet(LS_KEYS.STATS,{win:0,lose:0,draw:0}); appendBot(`📊 您的統計\n\n✅ 命中：${s.win}\n❌ 未中：${s.lose}\n⚪ 觀望：${s.draw}`); }
+  function showHelp(){ appendBot("📖 使用說明\n1. 找客服領序號或使用 demo 序號\n2. 輸入序號驗證\n3. 驗證成功後輸入 6 碼牌面\n4. 牌面字元：A,2-9,T,J,Q,K 或 0 表示 10"); }
+  function doReset(){ lsSet(LS_KEYS.PREDICTIONS, []); lsSet(LS_KEYS.STATS, {win:0,lose:0,draw:0}); session={verified:false,awaiting_serial:true,awaiting_seq:false,last_pred:null}; appendBot("🧹 已重置所有本機資料（序號需重新驗證）"); }
+
+  btnPrev.addEventListener('click', ()=>{ if(session.verified && session.awaiting_seq) appendBot("目前為輸入 6 碼階段，若要重新輸入請按 重置。"); else { session.awaiting_seq=true; appendBot("已回到輸入階段，請輸入 6 碼牌面。"); }});
+  btnReset.addEventListener('click', ()=>{ doReset(); });
+  btnStats.addEventListener('click', showStats);
+  btnHelp.addEventListener('click', showHelp);
+
+  sendBtn.addEventListener('click', ()=>{ handleInput(inputEl.value); inputEl.value=''; inputEl.focus(); });
+  inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendBtn.click(); }});
+  </script>
 </body>
 </html>
